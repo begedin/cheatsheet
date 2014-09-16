@@ -139,3 +139,85 @@ Some basic camera settings can be adjusted through `CameraOptionsUI.Show()`:
 To stop recording, we can call `StopRecordAsync`.
 
 ## Get data from sensors
+
+### Example of using sensors with the Accelerometer
+
+The various sensor APIs are built on top of the **Windows Sensor and Location platform**. The `Windows.Devices.Sensors` namespace provides classes, methods and types to access them.
+
+In most cases, we obtain a reference to the class that wraps a specific sensor with the `GetDefault` static method of the sensor class and then either poll the device at regular intervals, or subscribe to the`ReadingChanged` event.
+```
+Accelerometer accelerometer = Accelerometer.GetDefault();
+if (accelerometer == null) { /* no accelerometer found */ }
+else 
+{
+  uint minReportInterval = accelerometer.MinimumReportInterval;
+  var desiredReportInterval = minReportInterval > 16 ? minReportInterval : 16;
+  accelerometer.ReportInterval = desiredReportInterval; // desired interval (in ms) between two readings. 0 means default.
+  
+  accelerometer.ReadingChanged += Accelerometer_ReadingChanged;
+}
+
+private async void Accelerometer_ReadingChanged(Accelerometer sender, AccelerometerReadingChangedEventArgs args) 
+{
+  if (args.Reading != null) 
+  {
+    // do stuff with args.Reading.AccelerationX,args.Reading.AccelerationY,args.Reading.AccelerationZ, args.Reading.Timestamp
+  }
+}
+```
+
+Polling the sensor at regular intervals usually involves using a `DispatcherTimer`
+```
+// in initialization method
+DispatcherTimer timer = new DispatcherTimer();
+timer.Tick += PolLAccelerometerSensorReadings; // the method then uses GetCurrentReading() ont he accelerometer instance
+timer.Interval = new TimeSpan(0,0,0,0, (Int32)desiredReportInterval);
+timer.Start();
+```
+Specifically, the `Accelerometer` class also exposes a `Shaken` event, so we can subscribe to that.
+
+### The gryrometer sensor
+The gyrometer measuers angular velocity along three axes. The usage is again involes the `GetDefault` static method.The properties for the reading are `AngularVelocityX`, `AngularVelocityY`, `AngularVelocityZ` and `Timestamp`. 
+
+The report interval actually affects change sensitivity. For intervals of 1 to 16, the sensitivity is 0.1 degrees per second. For intervals from 17 to 32, it's 0.5 and for itnervals 33 or greater, it's 1 degree per second.
+
+### The compass sensor
+The compass indicates the heading in degrees relativ to the magnetic north, or depending on the implementation of the sensors, the geographic north. For that, it has two properties in the `CompassReading` class - `HeadingMagneticNorth` and `HeadingTrueNorth`.
+
+The report interval again affects change sensitivity. 1 to 16 equals to a sensitivity of 0.01 degrees, 17 to 32 is 0.5 and 33 or more is 2 degrees.
+
+### The orientation sensors
+
+The orientations sensor combines the other 3 sensors to provide more complex data. It returns an orientation,w hich can be one of several things - `NotRotated`, `Rotated90DegreesCounterClockwise`, `Rotated180DegreesCounterClockwise`, `Rotated270DegreesCounterClockwise`, `Faceup` and `Facedown`.
+
+Using the `SimpleOrientationSensor` class follows the same patters of the other sensors, for the most part. The event is now `OrientationChanged`. 
+
+There is also the `OrientationSensor` class which returns more detailed data int he form o f a `SensorRotationMatrix` or a `Quaternion`, retrieved from `args.Reading.RotationMatrix` and `args.Reading.Quaternion` respectively.
+
+### The inclinometer sensor
+
+The inclinometer determines rotation around the three axes. X is also known as pitch or beta, Y is roll or gamma and Z is yaw or alpha. Because of that, there are `RolLDegrees`, `PitchDegrees` and `YawDegrees properties` on the reading. The sensitivity depends on the report interval in the exact same way as the gyrometer sensor does.
+
+### The light sensor
+
+The light sensor detects light levels. They are measured as lumminence in lux and stored in the `LuminenceInLux` property of the `LightSensorReading` class. The sensitivity for a report interval of 1 to 32 ms is 1%, and anything after 33 ms is 5%.
+
+### Location
+
+The location can be retrieved with the Windows Location Provider, which uses Wi-Fi triangulation and IP address data, or throught he GPS sensor. The Location API determines the most accurate sensor for a given scenario. Both require the location capability to be declared in the manifest.
+```
+Geolocator geolocator = new Geolocator();
+geolocator.DesiredAccuracy = PositionAccuracy.High;
+/* PositionStatus enum { Ready, Initializing, NoData, Disabled, notInitialized, NotAvailable } */
+geolocator.StatusChanged += Geolocator_StatusChanged; 
+var position = await geolocator.GetGeopositionAsync();
+```
+
+The `Geoposition.Coordinate` object will contain `Longitude`, `Lattitude`, `Heading`, `Speed`, `Altitude`, `Accuracy` and `Timestamp` properties. The `Geoposition` object can also contain the `CivicAddress` property object, but only if a Civic Addres Provider is available on the system. Otherwise, it will simply return the regional information accessible from the Control Panel.
+
+`GetGeopositionAsync` also has an overload with two `TimeSpan` objects as parameters. The first is the maximum acceptable age of the date, and the second is the timeout.
+
+There is also the `PositionChanged` event, raised every time there's a change in the geographical location detected. For that, there's a `MovementTresholdProperty` accepting values in meters.
+
+## Enumerating devices
+
