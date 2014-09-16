@@ -15,4 +15,13 @@ if (img != null) {
   // do something else
 }
 ```
+The system remembers the user's choice for permissions, but it can be restored later in the application's settings panel on the charms bar.
 
+The CameraCaptureUI also has some setting properties:
+```
+camera.PhotoSettings.AllowCropping = true;
+camera.PhotoSettings.Format = CameraCaptureUIPhotoFormat.Jpeg; //Jpeg, JpexXR or Png
+camera.PhotoSettings.MaxResolution = CameraCaptureUIMaxPhotoResolution.HighestAvailable;
+```
+
+For resolution, the options are `HighestAvailable`, `VerySmallQvga` (up to 320x240), `SmallVga` (also up to 320x240), `MediumXga` (up to 1024x768), `Large3M` (up to 1920x1080), `VeryLarge5M` (up to 5MP).
