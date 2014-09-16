@@ -25,3 +25,14 @@ camera.PhotoSettings.MaxResolution = CameraCaptureUIMaxPhotoResolution.HighestAv
 ```
 
 For resolution, the options are `HighestAvailable`, `VerySmallQvga` (up to 320x240), `SmallVga` (also up to 320x240), `MediumXga` (up to 1024x768), `Large3M` (up to 1920x1080), `VeryLarge5M` (up to 5MP).
+
+Once a photo has been taken, the `CroppedAspectRatio` and `CroppedSizeInPixels` properties of the `PhotoSettings` property of the `CameraCaptureUI` instance can be read to determine the actual size of the cropped area.
+
+With `CameraCaptureUIMode.Vide`, we can also capture video. There, we can set properties on the `VideoSettings` property:
+```
+camera.VideoSettings.AllowTrimming = true;
+camera.VideoSettings.Format = CameraCaptureUIVideoFormat.Mp4; // or Wmv
+camera.VideoSettings.MaxDurationInSeconds = 30;
+camera.VideoSettings.MaxResolution = CameraCaptureUIMaxVideoResolution.HighDefinition;
+```
+For resolution, the options are `HighestAvailable`, `LowDefinition`, `StandardDefinition` and `HighDefinition`. If audio should be recorded along side video, the Microphone capability needs to be declared in the manifest.
