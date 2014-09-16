@@ -221,3 +221,36 @@ There is also the `PositionChanged` event, raised every time there's a change in
 
 ## Enumerating devices
 
+```
+var list = new List<DeviceItem>();
+
+var devices = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync();
+if (devices != null && devices.Count > 0) 
+{
+  foreach (DeviceInformation device in devices) 
+  {
+    var glyph = await device.GetGlyphThumbnailAsync();  // returns BitmapImage
+    var thumb = await device.GetThumbnailAsync();       // returns BitmapImage
+    
+    list.Add(new DeviceItem(device, thumb, glyph)); // DeviceItem is a custom class, not a default one
+  }
+}
+```
+
+The `DeviceInformation` class exposes various overloaded `FindAllAsync` methods, some of which accept a `DeviceClass` parameter, which is an enum with possible values of `All`, `AudioCapture`, `AudioRender`, `PortableStorageDevice` and `VideoCapture`. `FindAllAsync` can also accept an Advanced Query Synthax (AQS) selector.
+
+The `DeviceWatcher` class raises watches devices dynamically and raises events - `Added`, `EnumerationCompleted`, `Removed`, `Stopped` and `Updated`. A reference to the class is botained by calling the static `CreateWatcher` method of the `DeviceInformation` class. Search can begin by calling the `Start()` metod on the obtained reference. 
+
+`DeviceWatcher` also has various overloads accepting filters. It raises an `Added` event every time it finds and adds a device and ends it all with an `EnumerationCompleted` event. It stores its current status within the `Status` property as a `DeviceWatcherStatus` enum. The possible values are consistent with the events triggered.
+
+### Enumerating Plug and Play (PnP) devices
+Plug and Play device enumeration is enabled with the `Windows.Devices.Enumeration.PnP` namespace. It enables enumerating devices, device interfaces, device interface classes and device containers.
+
+A device interface is a symbolic link to the plug and play device that an application can use to access it. A device interface class is the interface that represents functionalities exposed by a class of devices. A device container represents the pyhsical device as seen by the user. It allows you to obtain information related to the actual hardware product.
+
+This is all provided through the `PnpObject` class, the constructor of which expects a `PnpObjectType` enun, which can be `Unknown`, `DeviceInterface`, `DeviceContainer` or `DeviceInterfaceClass`.
+```
+var deviceContainers = await PnpObject.FindAllAsync(pnpObjectType.DeviceContainer);
+```
+
+There is also a `PnpDeviceWatcher` object with `Added`, `Removed`, `Updated` and `EnumerationCompleted` events, used in the same way as `DeviceWatcher`.
