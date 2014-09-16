@@ -36,3 +36,106 @@ camera.VideoSettings.MaxDurationInSeconds = 30;
 camera.VideoSettings.MaxResolution = CameraCaptureUIMaxVideoResolution.HighDefinition;
 ```
 For resolution, the options are `HighestAvailable`, `LowDefinition`, `StandardDefinition` and `HighDefinition`. If audio should be recorded along side video, the Microphone capability needs to be declared in the manifest.
+
+### Using `MediaCapture` to capture pictures, video or audio
+
+For more direct control of the capturing process, the `MediaCapture` class can be used. The `CameraCaptureUI` API actually uses the `MediaCapture` API internally. To use this API, capabilities such as Webcam or Microphone need to be declared here as well. To store the captured file to say, the Video Library, the Video Library capability should also be declared.
+
+#### How to use the `MediaCapture` API to display a video stream from the webcam
+```
+private MediaCapture _mediaCapture;
+
+private async void StartDevice 
+{
+  try 
+  {
+    this._mediaCapture = new MediaCapture();
+  
+    this._mediaCapture.RecordLimitationExceeded += MediaCapture_RecordLimitationExceeded;
+    this._mediaCapture.Failed += MediaCapture_Failed;
+    
+    await this._mediaCapture.InitializeAsync();
+    
+    // there is an overload here, so we can also do it this way:
+    var settings = new MediaCaptureInitializationSettings();
+    settings.StreamingCaptureMode = StreamingCaptureMode.AudioAndVideo;
+    settings.PhotoCaptureSource = PhotoCaptureSource.VideoPreview;
+    await this._mediaCapture.InitializeAsync(settings);
+  } 
+  catch (UnauthorizedAccessException ex) 
+  {
+    // do stuff
+  }
+  catch (Exception ex)
+  {
+    // do other stuff
+  }
+}
+
+private async void MediaCapture_failed (MediaCapture sender, MediaCaptureFailedEventArgs errorEventArgs)
+{
+  await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+  {
+    // display error
+  }
+}
+
+private async void MediaCapture_RecordLimitationExceeded (MediaCapture sender) 
+{
+  await this._mediaCapture.StopRecordAsync();
+  await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => 
+  {
+    // display error
+  }
+}
+```
+
+After initialization, here's how we start the preview:
+```
+await this._mediaCapture.AddEffectAsync(MediaStreamType.VideoPreview, VideoEffects.VideoStabilization, null);
+PreviewElement.Source = this._MediaCapture;
+
+await this._mediaCapture.StartPreviewAsync();
+```
+Note the `AddEffectAsync` method. There's a counterpart - `ClearEffectsAsync`. The third parameter is a dictionary implementing the `IPropertySet` interface and containing configuration parameters for the effect.
+
+#### How to take a photo
+```
+ImageEncodingProperties encodingProperties = ImageEncodingProperties.CreateJpeg();
+WriteableBitmap bitmap = new WriteableBitmap((int)ImageElement.Width, (int)ImageElement.Height);
+
+using (var imageStream = new InMemoryRandomAccessStream()) 
+{
+  await this._mediaCapture.CapturePhotoStreamAsync(encodingProperties, imageStream);
+  await imageStream.FlushAsync();
+  imageStream.Seek(0);
+  bitmap.SetSource(imageStream);
+  
+  await Dispatcher.RunAsync(Windows.Ui:Core.CoreDispatcherPriority.normal, () => 
+  {
+    ImageElement.Source = bitmap;
+  }
+}
+```
+There is also the `CapturePhotoToStorageFileAsync` for capturing and saving directly as a storage file.
+
+The `MediaCaptureInitializationSettings` class also has `VideoDeviceId` and `AudioDeviceId` properties for selecting a specific video/audio device when there are multiple present.
+
+```
+var devices = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(
+                      Windows.Devices.Enumeration:DeviceClass.VideoCapture);
+//...                      
+settings.VideoDeviceId = devices[0].Id;
+```
+For videos, there are `StartRecordToStreamAsync` and `StartRecordToStorageFileAsync` classes, which accepts a `MediaEncodingProfile` object as the first parameter. There's a third class - `StartRecordToCustomSinkAsync`, which records to a custom media sink. 
+
+Some basic camera settings can be adjusted through `CameraOptionsUI.Show()`:
+```
+  if (this._mediaCapture != null) 
+  {
+    CameraOptionsUI.Show(this._mediaCapture);
+  }
+```
+To stop recording, we can call `StopRecordAsync`.
+
+## Get data from sensors
